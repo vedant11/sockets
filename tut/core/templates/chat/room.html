@@ -5,49 +5,83 @@
 		<title>Chat Room</title>
 	</head>
 	<body>
+		<h1>Chat Room</h1>
+		<div id="chat-status"></div>
 		<textarea id="chat-log" cols="100" rows="20"></textarea><br />
 		<input id="chat-message-input" type="text" size="100" /><br />
 		<script>
+			const name = prompt('Enter your name:');
 			const roomName = '{{room_name}}';
+			const retryInterval = 3000;
 
-			const socket = new WebSocket(
-				'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
-			);
-			socket.onmessage = function (e) {
+			const chatLog = document.querySelector('#chat-log');
+			const chatInput = document.querySelector('#chat-message-input');
+			const statusText = document.querySelector('#chat-status');
+			chatInput.focus();
+			const newWSConnection = () => {
+				try {
+					return new WebSocket(
+						'ws://' +
+							window.location.host +
+							'/ws/chat/' +
+							roomName +
+							'/'
+					);
+				} catch (err) {}
+			};
+			var sock = newWSConnection();
+			var sock2;
+
+			sock.onmessage = function (e) {
 				const data = JSON.parse(e.data);
-				document.querySelector('#chat-log').value +=
-					data.message + '\n';
+				chatLog.value += data.message + '\n';
 			};
-			socket.onclose = function (e) {
-				console.error('Chat socket closed unexpectedly');
-			};
-			socket.onopen = function (e) {
-				let name = prompt('Enter your name:');
-				document.querySelector(
-					'#chat-message-input'
-				).value = `${name} has joined the room`;
+			sock.onopen = function (e) {
+				statusText.innerHTML = `Connected`;
+				chatInput.value = `${name} has joined the room`;
 				submit();
+			};
+			sock.onclose = async function (e) {
+				statusText.innerHTML = 'Socket closed unexpectedly';
+				var timer = retryInterval / 1000;
+
+				const retryMessage = setInterval(() => {
+					statusText.innerHTML = `Retrying connection in ${timer} seconds`;
+					timer--;
+				}, 1000);
+				const retryHeartbeat = setInterval(async () => {
+					sock2 = newWSConnection();
+					sock2.onmessage = sock.onmessage;
+					sock2.onopen = sock.onopen;
+					sock = sock2;
+					if (sock != null)
+						await setTimeout(() => {
+							if (sock.readyState == 1) {
+								clearInterval(retryHeartbeat);
+								clearInterval(retryMessage);
+								sock2.onclose = sock.onclose;
+								sock = sock2;
+							} else {
+								sock.close();
+								sock2.close();
+								statusText.innerHTML = 'Can not connect';
+							}
+						}, 500);
+					timer = retryInterval / 1000;
+				}, retryInterval);
 			};
 
 			const submit = function (e) {
-				const messageInputDom = document.querySelector(
-					'#chat-message-input'
-				);
-				const message = messageInputDom.value;
-				socket.send(
+				const message = chatInput.value;
+				sock.send(
 					JSON.stringify({
 						message: message,
 					})
 				);
-				messageInputDom.value = '';
+				chatInput.value = '';
 			};
-
-			document.querySelector('#chat-message-input').focus();
-			document.querySelector('#chat-message-input').onkeyup = function (
-				e
-			) {
+			chatInput.onkeyup = function (e) {
 				if (e.keyCode === 13) {
-					// enter, return
 					submit();
 				}
 			};
