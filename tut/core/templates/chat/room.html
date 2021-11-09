@@ -23,7 +23,9 @@
 					return new WebSocket(
 						'ws://' +
 							window.location.host +
-							'/ws/chat/' +
+							('{{s_chat}}' == 'True'
+								? '/ws/schat/'
+								: '/ws/chat/') +
 							roomName +
 							'/'
 					);

@@ -22,6 +22,7 @@ import core.wsconsumer as cons
 
 urlpatterns = [
     re_path(r'ws/chat/(?P<room_name>\w+)/$', cons.ChatConsumer.as_asgi()),
+    re_path(r'ws/schat/(?P<room_name>\w+)/$', cons.SyncChatConsumer.as_asgi()),
 ]
 
 
