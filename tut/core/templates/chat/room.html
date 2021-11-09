@@ -21,6 +21,13 @@
 			socket.onclose = function (e) {
 				console.error('Chat socket closed unexpectedly');
 			};
+			socket.onopen = function (e) {
+				let name = prompt('Enter your name:');
+				document.querySelector(
+					'#chat-message-input'
+				).value = `${name} has joined the room`;
+				submit();
+			};
 
 			const submit = function (e) {
 				const messageInputDom = document.querySelector(
